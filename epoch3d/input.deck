@@ -1,0 +1,447 @@
+begin:constant
+#		constant
+ps = 1e-12
+eV = 1.6e-19
+Gs = 1e-4 
+Bs = 4.4e9 # Unit T, #4.4e13 Gs 
+
+#---------- External Magnetic Field
+B0 = 1e11*Gs
+Bp = 0.01*B0 
+Bg = 0.0*B0
+Bx0 = B0 
+Bz0 = B0
+
+#----------Plasma Parameter
+mratio = 1
+ratio1 = 20
+ratio2 = 50
+mi = mratio*me
+mp = 100*me
+
+omega_ce = qe*B0/me
+omega_pe = omega_ce/ratio1
+
+#Temperature is 1/4* (omega_ce/omega_pe)^2  me*c^2
+temp = 1/4 * ratio1^2 * me * c^2/eV # eV 
+
+#ne = B0^2/4/mu0/(temp*eV)
+ne = omega_pe^2*me*epsilon0/qe^2
+
+di = c/omega_pe
+Ldi = sqrt(temp*eV*epsilon0/ne/qe^2)
+
+va = B0/sqrt(mu0/me/ne)
+
+#current sheet thickness
+L = ratio2*di
+#drift_V = Ldi/L*c #gamma v me
+
+drift_V = B0/L/mu0/qe/ne/2
+
+#Whole Simulation Box
+xmin = -1000*di
+xmax = 1000*di
+ymin = -400*di
+ymax = 400*di
+zmin = -400*di
+zmax = 400*di
+y1 = ymax/2
+y2 = -y1
+
+Lx = x_max - x_min
+Ly = y_max - y_min
+
+#---------- External Electric Field
+#E0 = drift_V/c/sqrt(1 - drift_V^2/c^2)
+#E0 = 0
+
+#----------Simulation parameter.
+T0 = 2*pi/omega_pe
+tend = 400*T0
+
+#perturbation
+N_per = 8 #KL = 0.15
+kd = 2*pi/(Lx/N_per)
+end:constant
+
+begin:control
+#global number of gridpoints
+nx = 1000
+ny = 400
+nz = 400
+#final time of simulation
+t_end=tend
+#size of domain
+x_min= xmin 
+x_max= xmax 
+y_min= ymin 
+y_max= ymax 
+z_min= zmin
+z_max= zmax
+
+
+stdout_frequency=10
+smooth_currents=T
+print_constants=T
+#juttner distribution
+dt_multiplier = 0.5
+
+restart_snapshot = 15
+nprocx = 12
+nprocy = 6
+nprocz = 8
+#
+end:control
+
+begin:fields
+bx = if(y gt 0,B0*tanh((y-y1)/L)-2*pi*Bp/4* sin(kd*x + pi/2)*sin(2*pi*((y-y1)/Ly)),-B0*tanh((y-y2)/L) - 2*pi*Bp/4 * sin(kd*x + pi/2)*sin(2*pi*((y-y1)/Ly)))
+bz = Bg
+#######by perturbation field 
+by = -Bp*kd*Ly/4*cos(kd*x+pi/2)*cos(2*pi*(y-y1)/(Ly))
+end:fields
+
+begin:boundaries
+bc_x_min=periodic
+bc_x_max=periodic
+bc_y_min=periodic
+bc_y_max=periodic
+bc_z_min=periodic
+bc_z_max=periodic
+end:boundaries
+
+#######################----PARTICLE PART------#########
+
+begin:species
+charge=1
+mass= mratio 
+name= positron
+npart = nx*ny*nz
+#drift_z = if(y gt 0, -mi*drift_V*(1-(tanh((y-y1)/L))^2)/2, mi*drift_V*(1-(tanh((y-y2)/L))^2)/2)
+drift_z = if(y gt 0, -mi*drift_V, mi*drift_V)
+temp_ev=temp
+density = if(y gt 0,ne/(cosh((y-y1)/L))^2,ne/(cosh((y-y2)/L))^2  
+density_min = 0.01*ne
+use_maxwell_juttner = T
+dump = T 
+identify:positron
+end:species
+
+
+begin:species
+charge=-1.0
+mass=1.0
+name=electron
+npart = nx*ny*nz
+#frac=0.0
+#drift_z = if(y gt 0, me*drift_V*(1-(tanh((y-y1)/L))^2)/2, -me*drift_V*(1-(tanh((y-y2)/L))^2)/2)
+drift_z = if(y gt 0, me*drift_V, -me*drift_V)
+density=density(positron)
+density_min = 0.01*ne
+temp_ev=temp
+dump = T
+use_maxwell_juttner = T
+identify:electron
+end:species
+
+#################Background 
+begin:species
+charge=1
+mass= mratio 
+name= bg_positron
+npart = nx*ny*nz/10
+temp_ev=temp
+density = 0.08*ne  
+dump = T 
+use_maxwell_juttner = T
+identify:positron
+end:species
+
+begin:species
+charge=-1
+mass= 1.0
+name= bg_electron
+npart = nx*ny*nz/10
+temp_ev=temp
+temp_ev=temp
+density = 0.1*ne  
+dump = T 
+use_maxwell_juttner = T
+identify:electron
+end:species
+
+#baryon
+begin:species
+charge=1
+mass= 100
+name= bg_proton
+npart = nx*ny*nz/10
+temp_ev=temp
+temp_ev=temp
+density = 0.02*ne  
+dump = T 
+end:species
+
+
+####-------TRACER-----#####
+
+#begin:species
+#charge=1
+#mass= mratio 
+#name= tra_pos
+#npart= 200000 
+#drift_z = if(y gt 0, -mi*drift_V, mi*drift_V)
+#temp_ev=temp
+#density = 0.01*density(positron)
+#dump = F
+#identify:positron
+#end:species
+#
+#
+#begin:species
+#charge=-1.0
+#mass=1.0
+#name=tra_ele
+#npart= 200000 
+#drift_z = if(y gt 0, me*drift_V, -me*drift_V)
+#density=density(tra_pos)
+#temp_ev=temp
+#dump = F
+#identify:electron
+#end:species
+
+#####-------QED PARTICLE-----#####
+
+begin:species
+charge = 0 
+mass = 0 
+name = photon 
+dump = T
+identify = photon
+end:species
+#
+#begin:species
+#charge = -1 
+#mass = 1 
+#name = bw_electron 
+#dump = T
+#identify = bw_electron
+#end:species
+#
+#begin:species
+#charge = 1 
+#mass = 1 
+#name = bw_positron
+#dump = F
+#identify = bw_positron
+#end:species
+#
+################---------QED MODULE------###############
+#
+begin:qed
+	use_qed = T
+    #qed_close_time = 200*T0
+	produce_photons = T
+	photon_dynamics = F
+	produce_pairs = F
+	photon_energy_min = 0.5*1e6*eV
+	use_radiation_reaction = T
+end:qed
+
+###############-------SUBSET PART--------#############
+
+begin:subset
+	name = part
+	random_fraction = 0.5
+	include_species = electron
+#include_species = positron
+end:subset
+
+#begin:subset
+#	name = tra
+#	random_fraction = 1
+#	include_species = tra_ele
+#end:subset
+##
+begin:subset
+	name = pho
+	random_fraction = 0.01
+	include_species = photon
+end:subset
+
+begin:subset
+    name = elec
+    random_fraction = 0.01
+    include_species:electron
+    include_species:bg_electron
+end:subset
+
+
+#begin:dist_fn
+#        name = pho_en
+#        ndims = 1
+#        dumpmask = always
+#        direction1 = dir_en
+#        restrict_y = (0,ymax)
+#        range1=(0.5*1e6*eV,100*1e6*eV)
+#        resolution1 = 200
+#        include_species:photon
+#end:dist_fn
+
+
+begin:dist_fn
+        name = ele_en
+        ndims = 1
+        dumpmask = always
+        direction1 = dir_en
+        restrict_y = (0,ymax)
+        range1=(0,4000*1e6*eV)
+        resolution1 = 200
+        include_species:electron
+end:dist_fn
+#
+
+#################--------OUTPUT PART---------#############
+#####-----FIELD AND PARTICLE OUTPUT -----#####
+
+#begin:output
+#	name = field
+#    file_prefix = f
+#    time_start =  0.0*T0
+#	dt_snapshot = 50*T0
+#	dt_average = 0.4*T0
+#	####----- Density 
+#	number_density = always + species
+###	
+##	####----  Ekbar 
+#	ekbar = always + species
+##	
+##	####----- Field and current
+##	jx = always + species
+##	jy = always + species
+#	jz = always + species
+##    #four_velocity_ux = always+ species
+##    #four_velocity_uy = always+ species
+##    #four_velocity_uz = always+ species 
+##    velocity_ux = always+ species
+##    velocity_uy = always+ species
+##    velocity_uz = always+ species
+#	ez = always + average + snapshot
+##    ey = always + average + snapshot
+##    ex = always + average + snapshot
+#	bx = always + average + snapshot
+#	by = always + average + snapshot
+#	bz = always + average + snapshot
+##    #Hall_ez = always + average
+##    #convection_ez = always + average +snapshot
+##    rel_temperature_x = always + species
+##    rel_temperature_y = always + species
+##    rel_temperature_z = always + species
+##	#####------- optical depth
+##    #optical_depth = part 
+##	
+##	#####-------Field energy and particle energy 
+#    total_energy_sum = always
+##	
+##	####--------Species temperature
+###	temperature = always + species
+##
+##   #####--------distribution_functions
+#    distribution_functions = always
+#end:output
+#
+#
+#
+begin:output
+    force_final_to_be_restartable = T
+    restart_dump_every = 5
+    time_start =  0.0*T0
+	dt_snapshot = 10*T0
+	dt_average = 0.6*T0
+	####----- Density 
+	number_density = always
+##	
+#	####----  Ekbar 
+#	ekbar = always + species
+#	
+#	####----- Field and current
+    jx =  species
+	jy = species
+	jz = species
+#    #four_velocity_ux = always+ species
+#    #four_velocity_uy = always+ species
+#    #four_velocity_uz = always+ species 
+#    velocity_ux = always+ species
+#    velocity_uy = always+ species
+#    velocity_uz = always+ species
+	ez = always + average 
+#    ey = always + average + snapshot
+#    ex = always + average + snapshot
+	bx = always + average
+	#by = always + average 
+	#bz = always + average
+#    #Hall_ez = always + average
+#    #convection_ez = always + average +snapshot
+#    rel_temperature_x = always + species
+#    rel_temperature_y = always + species
+#    rel_temperature_z = always + species
+#	#####------- optical depth
+#    #optical_depth = part 
+#	
+#	#####-------Field energy and particle energy 
+    total_energy_sum = always
+#	
+#	####--------Species temperature
+##	temperature = always + species
+#
+#   #####--------distribution_functions
+    distribution_functions = always
+
+#Photon
+    particles = pho
+    particle_weight = pho
+    particle_energy = pho
+    generate_time = pho
+end:output
+#
+#begin:output
+#    name = particle
+#    file_prefix = p
+#    time_start =  0.0*T0
+#    dt_snapshot = 10*T0
+#    dt_average = 0.4*T0
+#    particles = part
+#    particle_weight = part
+#    gamma = part
+#    px = part
+#    py = part
+#    pz = part
+#end:output
+##
+##
+#begin:output
+#    name = o2
+#    file_prefix = pho
+#	time_start =  0.0*T0
+#	dt_snapshot = 20*T0
+#	dt_average = 0.4*T0
+#    particles = pho
+#    particle_weight = pho
+#    particle_energy = pho
+#    generate_time = pho
+#end:output
+###
+#begin:output
+#    name = tracer
+#    file_prefix = tp
+#	time_start =  0.0*T0
+#	dt_snapshot = 0.5*T0
+#    particles = tra
+#    particle_weight = tra
+#    gamma = tra
+#    px = tra
+#    py = tra
+#    id = tra
+#    pz = tra
+#end:output
+#

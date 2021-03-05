@@ -1,0 +1,14 @@
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_legacy.py
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/sdf_helper.py
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/visit_cmap.py
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/__init__.py
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/read_nameval.py
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/_version.py
+/home/xieyu/.local/lib/python3.7/site-packages/__pycache__/sdf_legacy.cpython-37.pyc
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/__pycache__/sdf_helper.cpython-37.pyc
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/__pycache__/visit_cmap.cpython-37.pyc
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/__pycache__/__init__.cpython-37.pyc
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/__pycache__/read_nameval.cpython-37.pyc
+/home/xieyu/.local/lib/python3.7/site-packages/sdf_helper/__pycache__/_version.cpython-37.pyc
+/home/xieyu/.local/lib/python3.7/site-packages/sdf.cpython-37m-x86_64-linux-gnu.so
+/home/xieyu/.local/lib/python3.7/site-packages/sdf-1.0-py3.7.egg-info

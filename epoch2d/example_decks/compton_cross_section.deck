@@ -1,0 +1,126 @@
+#this is for scatter cross section test
+#rnd = 0.0 for each collision and 
+begin:constant
+  dens = 1e30
+  ope = sqrt(dens*qe^2/me/epsilon0)
+  di = c/ope
+  t0 = 1/ope
+  v0 = 0.05 * c
+  vmax = 0.5 * c
+  alpha = -2.0
+  enmax = 200*1e3*ev
+  p0 = me*c
+  pmax = 10*p0
+  delta_p = 0.1*p0
+end:constant
+
+begin:control
+  nx = 10
+  ny = 10
+
+  # Final time of simulation
+  t_end = 20*t0
+
+  # Size of domain
+  x_min = 0
+  x_max = 10*di
+
+  y_min = 0
+  y_max = 10*di
+  stdout_frequency = 10
+  print_constants = T
+end:control
+
+
+begin:boundaries
+  bc_x_min = periodic
+  bc_x_max = periodic
+
+  bc_y_min = periodic
+  bc_y_max = periodic
+end:boundaries
+
+
+
+begin:qed
+
+  # These are the parts that control the QED sections of EPOCH
+  use_qed = T # Turn on or off QED. If you're normally running without QED then
+              # don't compile with -DPHOTONS
+
+  qed_start_time = 0 # Time after which QED effects should start.
+
+  produce_photons = F # Should the code actually produce and track photons.
+                      # If F then the code calculates the recoil due to emitting
+                      # photons, but the photon is not tracked. qed must be on
+                      # to Ever produce photons
+
+  photon_energy_min = 50 * kev # Minimum energy for a tracked photon. Photons
+                               # emitted with lower energy still cause electron
+                               # recoil but are not tracked
+
+  produce_pairs = F # Whether or not to activate the module for pair production
+                    # by the Breit-Wheeler process. Both qed and
+                    # produce_photons must be on to produce pairs
+
+  photon_dynamics = F # Quite often you're more interested in where photons are
+                      # generated than where they propagate to. This option
+                      # stops the core code from moving the photons.
+                      # This is also much faster.
+  ml_energy_pho = 0.1*me*c^2
+use_compton_scatter = T
+end:qed
+
+
+begin:species
+  name = electron
+  charge = -1
+  mass = 1.0
+  number_density = dens
+  nparticles = nx * ny * 15000
+  identify:electron
+end:species
+
+
+begin:species
+  name = posi
+  charge = 1.0
+  mass = 1.0
+  number_density = dens
+  nparticles = nx * ny * 15000
+  identify:positron
+end:species
+
+begin:species
+  name = photon
+  charge = 0
+  mass = 0.0
+  number_density = dens
+  nparticles = nx * ny * 15000
+#dist_fn = exp(-(px-p0)^2/delta_p)
+#  dist_fn_px_range = (0,2*p0)
+  identify:photon
+end:species
+
+
+
+begin:output
+  name = normal
+  # Simulated time between output dumps
+  dt_snapshot = 10*t0
+
+  # Properties at particle positions
+  #particles = always
+  px = always
+  py = always
+  pz = always
+  particle_energy = always
+  particle_weight = always
+
+  # Properties on grid
+  grid = always
+  number_density = always + species
+
+  # Extended io
+#distribution_functions = always
+end:output

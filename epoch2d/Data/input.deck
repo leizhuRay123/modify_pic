@@ -1,0 +1,186 @@
+begin:constant
+    abar1 = 25 #i versus e
+    zbar1 = 1.
+	#density
+	n0 = 1.e24
+	nb = 0.1 * n0
+
+	mi = abar1*me
+	wpe = sqrt(n0*qe*qe/epsilon0/me)
+	wpi = sqrt(zbar1*n0*qe*qe/epsilon0/mi)
+
+	#length
+	di = c/wpi
+    de = c/wpe
+	lx = 300 * de 
+	ly = 300 * de 
+    L0 = 200 * de
+
+    ratio = 1.0
+	r1 = sqrt(x^2 + (y/ratio)^2)
+	ctheta = x/r1
+	stheta = y/ratio/r1
+
+    #energy
+	#velocity
+    vTe0 = 0.2 * c
+    vTeb = 0.05 * vTe0
+    vTi0 = 0.05 * vTe0
+
+    #drift velocity
+    pe = vTe0*me
+    pi1 = vTi0*mi
+
+	#time
+	dt = 1./wpe
+	t_max = 2000 * dt
+	t_out = 100 * dt
+	t_avg = 10 * dt
+	
+
+	# function
+	sinf = sin(pi*r1/L0)
+ 	cosf1 = ( cos(pi*r1/2.0/L0) )^2
+ 	cosf2 = ( cos(pi*r1/2.0/L0) )^2
+
+    ppc = 10
+end:constant
+
+begin:control
+
+	nx = 200
+	ny = 200
+ 	
+ 	t_end = t_max
+    nsteps = 1000000
+
+	x_min = -lx
+	x_max = lx
+	y_min = -ly
+	y_max = ly
+  
+	dt_multiplier = 0.5
+	print_constants = T
+	stdout_frequency = 100
+	field_order = 4
+    smooth_currents = T
+
+end:control
+
+begin:boundaries
+	bc_x_min = open
+	bc_x_max = open
+ 	bc_y_min = open
+ 	bc_y_max = open
+end:boundaries
+
+begin:injector
+    boundary = z_min
+    species = electron1
+	density = if(r1 lt L0, ((n0-nb)*cosf2+nb), nb)
+    v_inject_z =  vTe0/lx #1/t
+	temp_ev = if(r1 lt L0, 0.5*me*((vTe0-vTeb)*cosf2+vTeb)^2/qe, 0.5*me*vTeb^2/qe)
+    density_min = n0*exp(-2.0)
+    nparticles_per_cell = ppc
+end:injector 
+
+begin:species
+	name = electron1
+    npart_per_cell = 16
+	mass = 1
+	charge = -1.0
+	dump = T
+	density = if(r1 lt L0, ((n0-nb)*cosf2+nb), nb)
+	drift_x = if(r1 lt L0,  pe * ctheta * sinf, 0)
+    drift_y = if(r1 lt L0,  pe * stheta * sinf, 0)
+#   zero_current = T
+    temp_ev = if(r1 lt L0, 0.5*me*((vTe0-vTeb)*cosf2+vTeb)^2/qe, 0.5*me*vTeb^2/qe)
+end:species
+
+begin:injector
+    boundary = z_min
+    species = proton1
+	density = if(r1 lt L0, ((n0-nb)*cosf2+nb)/zbar1, nb/zbar1)
+    v_inject_z = vTe0/lx
+	temp_ev = 0.5*mi*vTi0^2/qe
+    density_min = n0*exp(-2.0)
+    nparticles_per_cell = ppc
+	drift_x = if(r1 lt L0,  pi1 * ctheta * sinf, 0)
+    drift_y = if(r1 lt L0,  pi1 * stheta * sinf, 0)
+end:injector 
+
+begin:species
+	name = proton1
+    npart_per_cell = 16
+	mass = abar1
+	charge = zbar1
+	dump = T
+	density = if(r1 lt L0, ((n0-nb)*cosf2+nb)/zbar1, nb/zbar1)
+
+	drift_x = if(r1 lt L0,  pi1 * ctheta * sinf, 0)
+    drift_y = if(r1 lt L0,  pi1 * stheta * sinf, 0)
+#   zero_current = T
+    temp_ev = 0.5*mi*vTi0^2/qe
+end:species
+
+begin:qed
+    qed = F
+    merging = T
+end:qed
+
+begin:fields
+    bx = 0.
+    by = 0.
+    bz = 0.
+end:fields
+
+begin:subset
+        name  = ele
+        random_fraction = 1.0
+        include_species = electron1
+end:subset
+
+begin:subset
+        name = ion
+        random_fraction = 1.0
+        include_species = proton1
+end:subset
+
+
+begin:output
+	name = 01
+	dt_snapshot = t_out
+	dt_average = t_avg
+    file_prefix = 1
+	ex = always + average + single
+	ey = always + average + single
+	ez = always + average + single
+	bx = always + single
+	by = always + single
+	bz = always + single
+	jy = always + average + species + single
+	jz = always + average + species + single
+	jx = always + average + species + single
+    number_density = always + species + single
+#    charge_density = always + species + single
+	temperature = always + average + species + single
+#    velocity_ux = always + species + average + single
+#    velocity_uy = always + species + average + single
+    pressure_pxx = always + species + average + single
+    pressure_pxy = always + species + average + single
+    pressure_pyy = always + species + average + single
+end:output
+
+begin:output
+        name = 02
+        dt_snapshot = t_out
+        dt_average = t_avg
+        file_prefix = 2
+        particle_weight = ele + ion
+        particle_grid = ele + ion
+        px = ele + ion
+        py = ele + ion
+        pz = ele + ion
+        gamma = ele + ion
+end:output
+#
